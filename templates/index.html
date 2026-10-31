@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LexiScan – Lexical Analyzer</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- ============================ NAVIGATION ============================ -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#home" data-nav="home">
+      <span class="brand-mark">L</span>
+      <span class="brand-name">LexiScan</span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#home" data-nav="home">Home</a>
+      <a href="#editor" data-nav="editor">Editor</a>
+      <a href="#results" data-nav="results">Results</a>
+      <a href="#theory" data-nav="theory">Theory</a>
+      <a href="#about" data-nav="about">About</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================ A. HOME ============================ -->
+<section class="view" id="view-home">
+  <div class="hero">
+    <p class="eyebrow">Compiler Design Project</p>
+    <h1>LexiScan – Lexical Analyzer</h1>
+    <p class="hero-title">Design and Implementation of a Lexical Analyzer for Source Code Tokenization</p>
+    <p class="hero-text">
+      LexiScan reads C source code character by character, groups the characters into
+      lexemes, classifies every lexeme into a token category, tracks its line and column,
+      and reports lexical errors such as invalid characters and unterminated strings.
+    </p>
+    <button class="btn btn-light btn-lg" id="btn-start" type="button">Start Analyzing</button>
+  </div>
+
+  <div class="section-head">
+    <h2>Latest analysis</h2>
+    <p class="muted" id="dash-note">No analysis yet. Open the editor and click “Analyze Code”.</p>
+  </div>
+  <div class="card-grid four">
+    <div class="stat-card"><span class="stat-label">Total tokens</span><span class="stat-value" id="dash-total">0</span></div>
+    <div class="stat-card"><span class="stat-label">Keywords</span><span class="stat-value" id="dash-keywords">0</span></div>
+    <div class="stat-card"><span class="stat-label">Identifiers</span><span class="stat-value" id="dash-identifiers">0</span></div>
+    <div class="stat-card danger"><span class="stat-label">Errors</span><span class="stat-value" id="dash-errors">0</span></div>
+  </div>
+
+  <div class="section-head"><h2>What the analyzer recognizes</h2></div>
+  <div class="card-grid three">
+    <div class="card"><h3>Tokens</h3><p>Keywords, identifiers, operators, numeric constants, string and character literals, delimiters, comments and preprocessor lines.</p></div>
+    <div class="card"><h3>Lexical errors</h3><p>Invalid characters, invalid identifiers, malformed numbers, and unterminated strings, characters and block comments.</p></div>
+    <div class="card"><h3>Theory</h3><p>Regular expressions for each token class and finite-automata diagrams for identifiers and integers.</p></div>
+  </div>
+</section>
+
+<!-- ============================ B. EDITOR ============================ -->
+<section class="view" id="view-editor" hidden>
+  <div class="section-head">
+    <h2>Source Code Editor</h2>
+    <p class="muted">Type or paste C source code, or load a sample program.</p>
+  </div>
+
+  <div class="card editor-card">
+    <div class="toolbar">
+      <button class="btn btn-outline" id="btn-sample" type="button">Load Sample Program</button>
+      <button class="btn btn-outline" id="btn-sample-errors" type="button">Load Error Sample</button>
+      <span class="spacer"></span>
+      <button class="btn btn-outline" id="btn-clear-code" type="button">Clear Code</button>
+      <button class="btn btn-primary" id="btn-analyze" type="button">Analyze Code</button>
+    </div>
+    <div class="editor">
+      <div class="gutter" id="gutter" aria-hidden="true"></div>
+      <textarea id="source" spellcheck="false" wrap="off" autocomplete="off"
+                aria-label="Source code input" placeholder="Enter C source code here..."></textarea>
+    </div>
+    <div class="editor-status">
+      <span id="editor-info">1 line · 0 characters</span>
+      <span id="editor-msg" role="status"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ RESULTS ============================ -->
+<section class="view" id="view-results" hidden>
+  <div class="section-head row">
+    <div>
+      <h2>Analysis Results</h2>
+      <p class="muted">Generated dynamically from the source code in the editor.</p>
+    </div>
+    <button class="btn btn-outline" id="btn-clear-analysis" type="button">Clear Analysis</button>
+  </div>
+
+  <div class="empty-state card" id="results-empty">
+    <h3>No analysis yet</h3>
+    <p class="muted">Enter source code in the editor and click “Analyze Code”.</p>
+    <button class="btn btn-primary" id="btn-go-editor" type="button">Go to Editor</button>
+  </div>
+
+  <div id="results-body" hidden>
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="summary" type="button">Summary</button>
+      <button class="tab" role="tab" data-tab="tokens" type="button">Tokens</button>
+      <button class="tab" role="tab" data-tab="stats" type="button">Statistics</button>
+      <button class="tab" role="tab" data-tab="errors" type="button">Lexical Errors <span class="pill" id="tab-error-count">0</span></button>
+      <button class="tab" role="tab" data-tab="lines" type="button">Line Information</button>
+    </div>
+
+    <!-- 1. Summary -->
+    <div class="tab-panel" id="tab-summary">
+      <div class="banner" id="summary-banner"></div>
+      <div class="card-grid four">
+        <div class="stat-card"><span class="stat-label">Total tokens</span><span class="stat-value" id="sum-tokens">0</span></div>
+        <div class="stat-card danger"><span class="stat-label">Lexical errors</span><span class="stat-value" id="sum-errors">0</span></div>
+        <div class="stat-card"><span class="stat-label">Lines</span><span class="stat-value" id="sum-lines">0</span></div>
+        <div class="stat-card"><span class="stat-label">Characters</span><span class="stat-value" id="sum-chars">0</span></div>
+      </div>
+      <p class="muted small" id="sum-time"></p>
+    </div>
+
+    <!-- 2. Tokens -->
+    <div class="tab-panel" id="tab-tokens" hidden>
+      <div class="card">
+        <div class="toolbar">
+          <input class="input" id="token-search" type="search" placeholder="Search tokens (lexeme, type, line)…" aria-label="Search tokens">
+          <select class="input" id="token-filter" aria-label="Filter by token type">
+            <option value="">All token types</option>
+            <option value="KEYWORD">Keyword</option>
+            <option value="IDENTIFIER">Identifier</option>
+            <option value="OPERATOR">Operator</option>
+            <option value="CONSTANT">Constant</option>
+            <option value="STRING_LITERAL">String Literal</option>
+            <option value="CHAR_LITERAL">Character Literal</option>
+            <option value="DELIMITER">Delimiter</option>
+            <option value="COMMENT">Comment</option>
+            <option value="PREPROCESSOR">Preprocessor</option>
+          </select>
+          <span class="spacer"></span>
+          <button class="btn btn-primary" id="btn-csv" type="button">Download CSV</button>
+        </div>
+        <p class="muted small" id="token-count"></p>
+        <div class="table-wrap">
+          <table class="table" id="token-table">
+            <thead><tr><th>#</th><th>Lexeme</th><th>Token Type</th><th>Line Number</th><th>Column Number</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Statistics -->
+    <div class="tab-panel" id="tab-stats" hidden>
+      <div class="card-grid four" id="stat-cards"></div>
+      <p class="muted small">Every token appears in exactly one category, so the category counts add up to the total.</p>
+      <div class="card-grid two">
+        <div class="card"><h3>Tokens by category</h3><div id="bar-chart"></div></div>
+        <div class="card"><h3>Distribution</h3><div id="donut-chart"></div></div>
+      </div>
+    </div>
+
+    <!-- 4. Errors -->
+    <div class="tab-panel" id="tab-errors" hidden>
+      <div class="card">
+        <div class="banner ok" id="errors-ok" hidden>No lexical errors were found.</div>
+        <div class="table-wrap" id="errors-table-wrap">
+          <table class="table" id="error-table">
+            <thead><tr><th>#</th><th>Error Message</th><th>Line Number</th><th>Column Number</th><th>Invalid Lexeme / Character</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Line information -->
+    <div class="tab-panel" id="tab-lines" hidden>
+      <div class="card">
+        <div class="table-wrap">
+          <table class="table" id="line-table">
+            <thead><tr><th>Line</th><th>Source Code</th><th>Tokens</th><th>Errors</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ THEORY ============================ -->
+<section class="view" id="view-theory" hidden>
+  <div class="section-head">
+    <h2>Regular Expressions and Finite Automata</h2>
+    <p class="muted">The theory behind the token rules.</p>
+  </div>
+
+  <div class="card">
+    <h3>Regular expressions for the token classes</h3>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Token class</th><th>Regular expression</th><th>Examples</th></tr></thead>
+        <tbody>
+          <tr><td>Identifier</td><td><code>[A-Za-z_][A-Za-z0-9_]*</code></td><td>age, total_marks, number1</td></tr>
+          <tr><td>Keyword</td><td>an identifier whose lexeme is in the keyword table (<code>int|float|if|else|while|…</code>)</td><td>int, while, return</td></tr>
+          <tr><td>Integer constant</td><td><code>[0-9]+</code></td><td>10, 25, 0</td></tr>
+          <tr><td>Hexadecimal constant</td><td><code>0[xX][0-9A-Fa-f]+</code></td><td>0x2A, 0XFF</td></tr>
+          <tr><td>Floating-point constant</td><td><code>([0-9]+\.[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?</code></td><td>3.14, .5, 85.5</td></tr>
+          <tr><td>Exponential constant</td><td><code>[0-9]+[eE][+-]?[0-9]+</code> (or a float followed by an exponent)</td><td>1.5e3, 2E-4</td></tr>
+          <tr><td>String literal</td><td><code>"([^"\\\n]|\\.)*"</code></td><td>"Hello World"</td></tr>
+          <tr><td>Character literal</td><td><code>'([^'\\\n]|\\.)'</code> (one character or one escape sequence)</td><td>'A', '5', '\n'</td></tr>
+          <tr><td>Single-line comment</td><td><code>//[^\n]*</code></td><td>// note</td></tr>
+          <tr><td>Multi-line comment</td><td><code>/\*([^*]|\*+[^*/])*\*+/</code></td><td>/* note */</td></tr>
+          <tr><td>Operator</td><td><code>&lt;&lt;=|&gt;&gt;=|==|!=|&lt;=|&gt;=|&amp;&amp;|\|\||\+\+|--|[-+*/%=&lt;&gt;!&amp;|^~?]|…</code> (longest match first)</td><td>==, ++, &lt;&lt;=, +</td></tr>
+          <tr><td>Delimiter</td><td><code>[(){}\[\];,.:]</code></td><td>( ) { } ; ,</td></tr>
+          <tr><td>Preprocessor line</td><td><code>^[ \t]*#[^\n]*</code></td><td>#include &lt;stdio.h&gt;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-head"><h2>Finite automata (theory)</h2></div>
+  <div class="card-grid two">
+    <div class="card">
+      <h3>Identifier recognition</h3>
+      <svg class="fa-diagram" viewBox="0 0 520 170" role="img" aria-label="State diagram for identifiers">
+        <defs><marker id="arrow-id" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fa-arrow"/></marker></defs>
+        <line x1="20" y1="100" x2="76" y2="100" class="fa-line" marker-end="url(#arrow-id)"/>
+        <text x="20" y="88" class="fa-small">start</text>
+        <circle cx="100" cy="100" r="24" class="fa-state"/><text x="100" y="105" class="fa-label">q0</text>
+        <line x1="124" y1="100" x2="326" y2="100" class="fa-line" marker-end="url(#arrow-id)"/>
+        <text x="225" y="90" class="fa-label">letter | _</text>
+        <circle cx="350" cy="100" r="24" class="fa-state"/><circle cx="350" cy="100" r="19" class="fa-state"/><text x="350" y="105" class="fa-label">q1</text>
+        <path d="M 335 78 C 320 20, 380 20, 365 76" class="fa-line" fill="none" marker-end="url(#arrow-id)"/>
+        <text x="350" y="22" class="fa-label">letter | digit | _</text>
+        <text x="20" y="155" class="fa-small">q1 (double circle) is the accepting state. Any other input has no transition.</text>
+      </svg>
+      <p>The automaton starts in <b>q0</b>. A letter or underscore moves it to the accepting state <b>q1</b>, where any number of letters, digits and underscores keep it. A name that begins with a digit never leaves <b>q0</b>, so it is rejected.</p>
+    </div>
+    <div class="card">
+      <h3>Integer recognition</h3>
+      <svg class="fa-diagram" viewBox="0 0 520 170" role="img" aria-label="State diagram for integers">
+        <defs><marker id="arrow-int" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fa-arrow"/></marker></defs>
+        <line x1="20" y1="100" x2="76" y2="100" class="fa-line" marker-end="url(#arrow-int)"/>
+        <text x="20" y="88" class="fa-small">start</text>
+        <circle cx="100" cy="100" r="24" class="fa-state"/><text x="100" y="105" class="fa-label">q0</text>
+        <line x1="124" y1="100" x2="326" y2="100" class="fa-line" marker-end="url(#arrow-int)"/>
+        <text x="225" y="90" class="fa-label">digit (0-9)</text>
+        <circle cx="350" cy="100" r="24" class="fa-state"/><circle cx="350" cy="100" r="19" class="fa-state"/><text x="350" y="105" class="fa-label">q1</text>
+        <path d="M 335 78 C 320 20, 380 20, 365 76" class="fa-line" fill="none" marker-end="url(#arrow-int)"/>
+        <text x="350" y="22" class="fa-label">digit</text>
+        <text x="20" y="155" class="fa-small">q1 (double circle) is the accepting state. Any other input has no transition.</text>
+      </svg>
+      <p>The first digit moves the automaton from <b>q0</b> to the accepting state <b>q1</b>; further digits stay in <b>q1</b>. The regular expression is <code>[0-9]+</code>.</p>
+    </div>
+  </div>
+
+  <div class="card note-card">
+    <h3>Theory versus implementation</h3>
+    <p>The diagrams above are <b>theoretical</b> finite automata. LexiScan does <b>not</b> contain a generic DFA engine or a transition table. Its scanner in <code>lexer.py</code> is a hand-written, character-by-character scanner whose loops follow the same states. For example, identifier scanning is:</p>
+    <pre class="code-sample">def scan_identifier(self, line, col):
+    start = self.pos
+    while is_id_part(self.peek()):   # stay in q1 on letter, digit or _
+        self.advance()
+    lexeme = self.src[start:self.pos]
+    # keyword table lookup decides KEYWORD or IDENTIFIER</pre>
+    <p>The first character is checked in the main loop (<code>is_id_start</code>, which plays the role of the q0 → q1 move). Regular expressions are used in the code only to validate numeric suffixes and character-literal bodies. Operators are matched by trying 3-, 2- and then 1-character candidates, which gives the longest match.</p>
+  </div>
+</section>
+
+<!-- ============================ F. ABOUT ============================ -->
+<section class="view" id="view-about" hidden>
+  <div class="section-head"><h2>About the Project</h2></div>
+
+  <div class="card">
+    <h3>Project title</h3>
+    <p>Design and Implementation of a Lexical Analyzer for Source Code Tokenization</p>
+    <p class="muted">Subject: Compiler Design · Academic Year: 2026–2027</p>
+  </div>
+
+  <div class="card">
+    <h3>Abstract</h3>
+    <p>Lexical analysis is the first phase of a compiler. It converts a stream of characters into a stream of tokens that the parser can use. This project implements a lexical analyzer for a subset of the C language. The scanner reads the source code character by character, identifies lexemes using predefined lexical rules, classifies them into keywords, identifiers, operators, constants, string and character literals, delimiters and comments, and records the line and column of each token. Common lexical errors are detected and reported with their positions, and token statistics are produced. A Flask web application presents the results in tables and charts.</p>
+  </div>
+
+  <div class="card-grid two">
+    <div class="card">
+      <h3>Objectives</h3>
+      <ul>
+        <li>Scan source code character by character and identify lexemes.</li>
+        <li>Classify lexemes into token categories using longest-match rules.</li>
+        <li>Produce a token table with line and column numbers.</li>
+        <li>Detect lexical errors and report them clearly.</li>
+        <li>Show token statistics and demonstrate regular expressions and finite automata.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Technologies used</h3>
+      <ul>
+        <li>Python 3 – lexical analyzer (character-by-character scanner)</li>
+        <li>Python <code>re</code> module – validation of numeric suffixes and character literals</li>
+        <li>Flask – web server and JSON API</li>
+        <li>HTML5, CSS3, JavaScript – user interface, charts and CSV export</li>
+        <li>Python <code>unittest</code> – automated tests</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Project team</h3>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>#</th><th>Name</th><th>Roll Number</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>V Sanjay Bhaargav</td><td>2420030014</td></tr>
+          <tr><td>2</td><td>P Rahul</td><td>2420030368</td></tr>
+          <tr><td>3</td><td>Mvs Aasrith</td><td>2420030573</td></tr>
+          <tr><td>4</td><td>M Rishikesh</td><td>2420030012</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>Project Guide:</b> Dr. P Krishna Kishore</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  LexiScan – Lexical Analyzer · Compiler Design · 2026–2027
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
